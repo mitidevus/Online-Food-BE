@@ -5,6 +5,7 @@ import {
     updateVendorProfile,
     updateVendorService,
 } from "../controllers";
+import { authenticate } from "../middlewares/CommonAuth";
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.get("/", (req: Request, res: Response, next: NextFunction) => {
 
 router.post("/login", loginVendor);
 
+router.use(authenticate);
 router.get("/profile", getVendorProfile);
 router.patch("/profile", updateVendorProfile);
 router.patch("/service", updateVendorService);

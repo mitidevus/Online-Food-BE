@@ -9,7 +9,21 @@ export interface CreateVendorInput {
     password: string;
 }
 
-export interface VendorLoginInput {
+export interface LoginVendorInput {
     email: string;
     password: string;
+}
+
+export interface EditVendorInput {
+    name: string;
+    address: string;
+    phone: string;
+    foodType: [string];
+}
+
+export interface VendorPayload {
+    _id: string;
+    email: string;
+    name: string;
+    foodType: [string];
 }
