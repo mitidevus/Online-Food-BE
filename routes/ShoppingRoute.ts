@@ -5,7 +5,7 @@ import {
     getRestaurantById,
     getTopRestaurants,
     searchFoods,
-} from "../controllers/ShoppingController";
+} from "../controllers";
 
 const router = express.Router();
 

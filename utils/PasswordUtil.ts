@@ -1,8 +1,7 @@
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { VendorPayload } from "../dto";
-import { JWT_SECRET_KEY } from "../config";
 import { Request } from "express";
+import jwt from "jsonwebtoken";
+import { JWT_SECRET_KEY } from "../config";
 import { AuthPayload } from "../dto/Auth.dto";
 
 export const generateSalt = async () => {
@@ -22,7 +21,7 @@ export const validatePassword = async (
     return hashedPassword === savedPassword;
 };
 
-export const generateToken = async (payload: VendorPayload) => {
+export const generateToken = async (payload: AuthPayload) => {
     const token = await jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: "1d" });
 
     return token;

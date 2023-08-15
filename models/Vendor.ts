@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-interface VenterDoc extends Document {
+interface VendorDoc extends Document {
     name: string;
     ownerName: string;
     foodType: [string];
@@ -46,7 +46,7 @@ const VendorSchema: Schema = new Schema(
     }
 );
 
-const Vendor: Model<VenterDoc> = mongoose.model<VenterDoc>(
+const Vendor: Model<VendorDoc> = mongoose.model<VendorDoc>(
     "vendor",
     VendorSchema
 );
