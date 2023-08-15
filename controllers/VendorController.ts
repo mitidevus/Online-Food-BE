@@ -1,14 +1,16 @@
 import e, { NextFunction, Request, Response } from "express";
-import { EditVendorInput, LoginVendorInput } from "../dto";
+import { UpdateVendorInputs, LoginVendorInputs } from "../dto";
 import { Vendor } from "../models";
 import { generateToken, validatePassword } from "../utils";
+import { CreateFoodInputs } from "../dto/Food.dto";
+import { Food } from "../models/Food";
 
 export const loginVendor = async (
     req: Request,
     res: Response,
     next: NextFunction
 ) => {
-    const { email, password } = <LoginVendorInput>req.body;
+    const { email, password } = <LoginVendorInputs>req.body;
 
     const existingVendor = await Vendor.findOne({ email });
 
@@ -71,7 +73,7 @@ export const updateVendorProfile = async (
     res: Response,
     next: NextFunction
 ) => {
-    const { name, address, phone, foodType } = <EditVendorInput>req.body;
+    const { name, address, phone, foodType } = <UpdateVendorInputs>req.body;
 
     const user = req.user;
 
@@ -99,13 +101,43 @@ export const updateVendorProfile = async (
     return res.status(200).json(vendor);
 };
 
+export const updateVendorCoverImage = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const user = req.user;
+
+    if (!user) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const vendor = await Vendor.findById(user._id);
+
+    if (!vendor) {
+        return res.status(404).json({
+            message: "No vendor found",
+        });
+    }
+
+    const files = req.files as Express.Multer.File[];
+
+    const images = files.map((file) => file.filename);
+
+    vendor.coverImages.push(...images);
+
+    const savedVendor = await vendor.save();
+
+    return res.status(200).json(savedVendor);
+};
+
 export const updateVendorService = async (
     req: Request,
     res: Response,
     next: NextFunction
 ) => {
-    const { isAvailable } = req.body;
-
     const user = req.user;
 
     if (!user) {
@@ -127,4 +159,75 @@ export const updateVendorService = async (
     const savedVendor = await vendor.save();
 
     return res.status(200).json(savedVendor);
+};
+
+export const createFood = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const user = req.user;
+
+    if (!user) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const { name, description, category, foodType, readyTime, price } = <
+        CreateFoodInputs
+    >req.body;
+
+    const vendor = await Vendor.findById(user._id);
+
+    if (!vendor) {
+        return res.status(404).json({
+            message: "No vendor found",
+        });
+    }
+
+    const files = req.files as Express.Multer.File[];
+
+    const images = files.map((file) => file.filename);
+
+    const newFood = await Food.create({
+        vendorId: vendor._id,
+        name,
+        description,
+        category,
+        foodType,
+        readyTime,
+        price,
+        rating: 0,
+        images,
+    });
+
+    vendor.foods.push(newFood);
+    await vendor.save();
+
+    return res.status(201).json(newFood);
+};
+
+export const getFoods = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const user = req.user;
+
+    if (!user) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const foods = await Food.find({ vendorId: user._id });
+
+    if (!foods) {
+        return res.status(404).json({
+            message: "No foods found",
+        });
+    }
+
+    return res.status(200).json(foods);
 };

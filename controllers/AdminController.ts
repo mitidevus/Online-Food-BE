@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { CreateVendorInput } from "../dto";
+import { CreateVendorInputs } from "../dto";
 import { Vendor } from "../models";
 import { generateSalt, hashPassword } from "../utils";
 
@@ -17,7 +17,7 @@ export const createVendor = async (
         phone,
         email,
         password,
-    } = <CreateVendorInput>req.body;
+    } = <CreateVendorInputs>req.body;
 
     const existingVendor = await Vendor.findOne({ email });
 
@@ -44,6 +44,7 @@ export const createVendor = async (
         serviceAvailable: false,
         coverImages: [],
         rating: 0,
+        foods: [],
     });
 
     return res.status(201).json(newVendor);

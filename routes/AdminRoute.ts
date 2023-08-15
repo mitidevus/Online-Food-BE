@@ -11,7 +11,7 @@ router.get("/", (req: Request, res: Response, next: NextFunction) => {
 
 router.post("/vendor", createVendor);
 
-router.get("/vendor", getVendors);
+router.get("/vendors", getVendors);
 
 router.get("/vendor/:id", getVendorById);
 
