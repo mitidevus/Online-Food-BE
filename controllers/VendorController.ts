@@ -1,9 +1,9 @@
-import e, { NextFunction, Request, Response } from "express";
-import { UpdateVendorInputs, LoginVendorInputs } from "../dto";
-import { Vendor } from "../models";
-import { generateToken, validatePassword } from "../utils";
+import { NextFunction, Request, Response } from "express";
+import { LoginVendorInputs, UpdateVendorInputs } from "../dto";
 import { CreateFoodInputs } from "../dto/Food.dto";
+import { Vendor } from "../models";
 import { Food } from "../models/Food";
+import { generateToken, validatePassword } from "../utils";
 
 export const loginVendor = async (
     req: Request,

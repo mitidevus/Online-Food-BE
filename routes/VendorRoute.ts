@@ -1,4 +1,5 @@
-import express, { Request, Response, NextFunction } from "express";
+import express from "express";
+import multer from "multer";
 import {
     createFood,
     getFoods,
@@ -9,7 +10,6 @@ import {
     updateVendorService,
 } from "../controllers";
 import { authenticate } from "../middlewares/CommonAuth";
-import multer from "multer";
 
 const router = express.Router();
 

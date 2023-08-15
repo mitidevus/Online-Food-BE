@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import { NextFunction, Request, Response } from "express";
 import { CreateVendorInputs } from "../dto";
 import { Vendor } from "../models";
 import { generateSalt, hashPassword } from "../utils";
