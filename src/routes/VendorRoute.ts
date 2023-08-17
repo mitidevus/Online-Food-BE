@@ -2,9 +2,15 @@ import express from "express";
 import multer from "multer";
 import {
     createFood,
+    createPromo,
+    getCurrentOrders,
     getFoods,
+    getOrderDetails,
+    getPromos,
     getVendorProfile,
     loginVendor,
+    processOrder,
+    updatePromo,
     updateVendorCoverImage,
     updateVendorProfile,
     updateVendorService,
@@ -32,7 +38,18 @@ router.patch("/profile", updateVendorProfile);
 router.patch("/coverimage", images, updateVendorCoverImage);
 router.patch("/service", updateVendorService);
 
+// Food
 router.post("/food", images, createFood);
 router.get("/foods", getFoods);
+
+// Order
+router.get("/orders", getCurrentOrders);
+router.get("/order/:id", getOrderDetails);
+router.put("/order/:id/process", processOrder);
+
+// Promo
+router.post("/promo", createPromo);
+router.get("/promos", getPromos);
+router.put("/promo/:id", updatePromo);
 
 export { router as VendorRoute };

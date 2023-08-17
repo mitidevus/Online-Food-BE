@@ -1,6 +1,10 @@
 import express from "express";
 import {
+    addToCart,
     createOrder,
+    deleteCart,
+    getAvailablePromos,
+    getCart,
     getCustomerProfile,
     getOrderById,
     getOrders,
@@ -32,9 +36,17 @@ router.get("/otp", requestOTP);
 router.get("/profile", getCustomerProfile);
 router.patch("/profile", updateCustomerProfile);
 
+// Cart
+router.post("/cart", addToCart);
+router.get("/cart", getCart);
+router.delete("/cart", deleteCart);
+
 // Order
 router.post("/order", createOrder);
 router.get("/orders", getOrders);
 router.get("/order/:id", getOrderById);
+
+// Find Promos
+router.get("/promos/:pinCode", getAvailablePromos);
 
 export { router as CustomerRoute };

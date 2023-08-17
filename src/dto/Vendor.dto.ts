@@ -27,3 +27,19 @@ export interface VendorPayload {
     name: string;
     foodType: [string];
 }
+
+export interface CreatePromoInputs {
+    promoType: string; // GENERIC, VENDOR
+    promoRequire: string; // BANK, CARD, NONE
+    promoCode: string;
+    title: string;
+    description: string;
+    minValue: number;
+    promoAmount: number;
+    startDate: Date;
+    endDate: Date;
+    bank: [any];
+    bins: [any];
+    pinCode: string;
+    isActive: boolean;
+}

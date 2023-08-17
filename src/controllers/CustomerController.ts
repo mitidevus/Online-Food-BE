@@ -18,7 +18,9 @@ import {
 import { Customer } from "../models/Customer";
 import { Food } from "../models/Food";
 import { Order } from "../models/Order";
+import { Promo } from "../models/Promo";
 
+// SIGN UP
 export const signupCustomer = async (
     req: Request,
     res: Response,
@@ -91,6 +93,7 @@ export const signupCustomer = async (
     });
 };
 
+// LOGIN
 export const loginCustomer = async (
     req: Request,
     res: Response,
@@ -150,6 +153,7 @@ export const loginCustomer = async (
     });
 };
 
+// VERIFY ACCOUNT CUSTOMER
 export const verifyCustomer = async (
     req: Request,
     res: Response,
@@ -218,6 +222,7 @@ export const verifyCustomer = async (
     });
 };
 
+// OTP / REQUEST OTP
 export const requestOTP = async (
     req: Request,
     res: Response,
@@ -261,6 +266,7 @@ export const requestOTP = async (
     });
 };
 
+// PROFILE
 export const getCustomerProfile = async (
     req: Request,
     res: Response,
@@ -327,6 +333,122 @@ export const updateCustomerProfile = async (
     return res.status(200).json(updatedCustomer);
 };
 
+// CART
+export const addToCart = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const customer = req.user;
+
+    if (!customer) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const profile = await Customer.findById(customer._id).populate("cart.food");
+
+    console.log(profile);
+
+    if (!profile) {
+        return res.status(404).json({
+            message: "Customer not found",
+        });
+    }
+
+    const { _id, quantity } = <OrderInputs>req.body;
+
+    const food = await Food.findById(_id);
+
+    if (!food) {
+        return res.status(404).json({
+            message: "Food not found",
+        });
+    }
+
+    let cartItems = [];
+    cartItems = profile.cart;
+
+    const existingItem = cartItems.find((item) => item.food._id == _id);
+
+    if (existingItem) {
+        const index = cartItems.indexOf(existingItem);
+
+        if (quantity > 0) {
+            cartItems[index].quantity = quantity;
+        } else {
+            cartItems.splice(index, 1);
+        }
+    } else {
+        cartItems.push({
+            food,
+            quantity,
+        });
+    }
+
+    profile.cart = cartItems as any;
+
+    const updatedProfile = await profile.save();
+
+    return res.status(200).json(updatedProfile.cart);
+};
+
+export const getCart = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const customer = req.user;
+
+    if (!customer) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const profile = await Customer.findById(customer._id).populate("cart.food");
+
+    if (!profile) {
+        return res.status(404).json({
+            message: "Customer not found",
+        });
+    }
+
+    return res.status(200).json(profile.cart);
+};
+
+export const deleteCart = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const customer = req.user;
+
+    if (!customer) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const profile = await Customer.findById(customer._id);
+
+    console.log(profile);
+
+    if (!profile) {
+        return res.status(404).json({
+            message: "Customer not found",
+        });
+    }
+
+    profile.cart = [] as any;
+
+    const updatedProfile = await profile.save();
+
+    return res.status(200).json(updatedProfile.cart);
+};
+
+// ORDER
 export const createOrder = async (
     req: Request,
     res: Response,
@@ -355,6 +477,8 @@ export const createOrder = async (
 
     let total = 0;
 
+    let vendorId = "";
+
     // Calculate total price
     const foods = await Food.find()
         .where("_id")
@@ -365,6 +489,7 @@ export const createOrder = async (
         cart.map((item) => {
             // Food id is ObjectId, item._id is string
             if (item._id === food._id.toString()) {
+                vendorId = food.vendorId;
                 total += food.price * item.quantity;
                 cartItem.push({
                     food,
@@ -377,18 +502,9 @@ export const createOrder = async (
     // Create order
     const orderId = Math.floor(Math.random() * 899999 + 100000); // From 100000 to 999999
 
-    console.log({
-        orderId,
-        items: cartItem,
-        total,
-        orderDate: new Date(),
-        paymentMethod: "COD",
-        paymentResponse: "",
-        status: "Pending",
-    });
-
     const currentOrder = await Order.create({
         orderId,
+        vendorId,
         items: cartItem,
         total,
         orderDate: new Date(),
@@ -404,6 +520,7 @@ export const createOrder = async (
     }
 
     // Add order to customer
+    profile.cart = [] as any;
     profile.orders.push(currentOrder);
     await profile.save();
 
@@ -466,4 +583,25 @@ export const getOrderById = async (
     }
 
     return res.status(200).json(order);
+};
+
+export const getAvailablePromos = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const pinCode = req.params.pinCode;
+
+    const promos = await Promo.find({
+        pinCode,
+        isActive: true,
+    });
+
+    if (!promos) {
+        return res.status(404).json({
+            message: "No promos found",
+        });
+    }
+
+    return res.status(200).json(promos);
 };

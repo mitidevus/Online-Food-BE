@@ -12,6 +12,7 @@ import {
 export default async (app: Application) => {
     app.use(express.json()); // for parsing application/json
     app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+
     app.use("/images", express.static(path.join(__dirname, "images")));
 
     app.use("/admin", AdminRoute);
