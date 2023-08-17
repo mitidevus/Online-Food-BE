@@ -162,6 +162,13 @@ export const updateVendorService = async (
 
     vendor.serviceAvailable = !vendor.serviceAvailable;
 
+    const { lat, lng } = req.body;
+
+    if (lat && lng) {
+        vendor.lat = lat;
+        vendor.lng = lng;
+    }
+
     const savedVendor = await vendor.save();
 
     return res.status(200).json(savedVendor);

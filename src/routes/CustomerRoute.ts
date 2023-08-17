@@ -2,8 +2,8 @@ import express from "express";
 import {
     addToCart,
     createOrder,
+    createTransaction,
     deleteCart,
-    getAvailablePromos,
     getCart,
     getCustomerProfile,
     getOrderById,
@@ -13,6 +13,7 @@ import {
     signupCustomer,
     updateCustomerProfile,
     verifyCustomer,
+    verifyPromo,
 } from "../controllers";
 import { authenticate } from "../middlewares/CommonAuth";
 
@@ -41,12 +42,15 @@ router.post("/cart", addToCart);
 router.get("/cart", getCart);
 router.delete("/cart", deleteCart);
 
+// Transaction (Payment )
+router.post("/transaction", createTransaction);
+
 // Order
 router.post("/order", createOrder);
 router.get("/orders", getOrders);
 router.get("/order/:id", getOrderById);
 
-// Find Promos
-router.get("/promos/:pinCode", getAvailablePromos);
+// Promo
+router.get("/promo/verify/:id", verifyPromo);
 
 export { router as CustomerRoute };

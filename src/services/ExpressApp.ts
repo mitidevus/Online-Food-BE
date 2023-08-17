@@ -1,10 +1,10 @@
 import express, { Application } from "express";
-import mongoose, { ConnectOptions } from "mongoose";
 import path from "path";
 
 import {
     AdminRoute,
     CustomerRoute,
+    ShipperRoute,
     ShoppingRoute,
     VendorRoute,
 } from "../routes";
@@ -18,6 +18,7 @@ export default async (app: Application) => {
     app.use("/admin", AdminRoute);
     app.use("/vendor", VendorRoute);
     app.use("/customer", CustomerRoute);
+    app.use("/shipper", ShipperRoute);
     app.use(ShoppingRoute);
 
     return app;

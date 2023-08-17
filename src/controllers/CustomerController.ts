@@ -1,12 +1,20 @@
-import { NextFunction, Request, Response } from "express";
 import { plainToClass } from "class-transformer";
+import { validate } from "class-validator";
+import { NextFunction, Request, Response } from "express";
 import {
+    CartItem,
     CreateCustomerInputs,
     LoginCustomerInputs,
     OrderInputs,
+    PaymentCustomerInputs,
     UpdateCustomerProfileInputs,
 } from "../dto/Customer.dto";
-import { validate } from "class-validator";
+import { Vendor } from "../models";
+import { Customer } from "../models/Customer";
+import { Food } from "../models/Food";
+import { Promo } from "../models/Promo";
+import { Shipper } from "../models/Shipper";
+import { Transaction } from "../models/Transaction";
 import {
     generateOTP,
     generateSalt,
@@ -15,10 +23,7 @@ import {
     onRequestOTP,
     validatePassword,
 } from "../utils";
-import { Customer } from "../models/Customer";
-import { Food } from "../models/Food";
 import { Order } from "../models/Order";
-import { Promo } from "../models/Promo";
 
 // SIGN UP
 export const signupCustomer = async (
@@ -38,11 +43,6 @@ export const signupCustomer = async (
 
     const { email, phone, password } = customerInputs;
 
-    const salt = await generateSalt();
-    const userPassword = await hashPassword(password, salt);
-
-    const { otp, otp_expiry } = generateOTP();
-
     const existingCustomer = await Customer.findOne({
         email,
     });
@@ -52,6 +52,11 @@ export const signupCustomer = async (
             message: "A customer with this email already exists.",
         });
     }
+
+    const salt = await generateSalt();
+    const userPassword = await hashPassword(password, salt);
+
+    const { otp, otp_expiry } = generateOTP();
 
     const newCustomer = await Customer.create({
         email,
@@ -117,7 +122,7 @@ export const loginCustomer = async (
 
     if (!customer) {
         return res.status(404).json({
-            message: "Customer not found",
+            message: "This email is not registered",
         });
     }
 
@@ -357,7 +362,7 @@ export const addToCart = async (
         });
     }
 
-    const { _id, quantity } = <OrderInputs>req.body;
+    const { _id, quantity } = <CartItem>req.body;
 
     const food = await Food.findById(_id);
 
@@ -448,6 +453,125 @@ export const deleteCart = async (
     return res.status(200).json(updatedProfile.cart);
 };
 
+// TRANSACTION
+export const createTransaction = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const customer = req.user;
+
+    if (!customer) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const { totalAmount, paymentMethod, promoId } = <PaymentCustomerInputs>(
+        req.body
+    );
+
+    let finalAmount = totalAmount;
+
+    if (promoId) {
+        const promo = await Promo.findById(promoId);
+
+        if (!promo) {
+            return res.status(404).json({
+                message: "Promo not found",
+            });
+        }
+
+        if (!promo.isActive) {
+            return res.status(400).json({
+                message: "Promo is not active",
+            });
+        }
+
+        finalAmount = totalAmount - promo.promoAmount;
+    }
+
+    // Create record on Transaction
+    const transaction = await Transaction.create({
+        customerId: customer._id,
+        vendorId: "",
+        orderId: "",
+        orderAmount: finalAmount,
+        promoId: promoId || "N/A",
+        paymentMode: paymentMethod,
+        paymentResponse: "Cash payment on delivery",
+        status: "Open",
+    });
+
+    if (!transaction) {
+        return res.status(500).json({
+            message: "Create transaction failed. Please try again later.",
+        });
+    }
+
+    return res.status(201).json(transaction);
+};
+
+const validateTransaction = async (transactionId: string) => {
+    const currentTransaction = await Transaction.findById(transactionId);
+
+    if (!currentTransaction || currentTransaction.status !== "Open") {
+        return {
+            status: false,
+            currentTransaction,
+        };
+    }
+
+    return {
+        status: true,
+        currentTransaction,
+    };
+};
+
+// DELIVERY NOTIFICATION
+const findShipperNearVendor = async (vendorId: string) => {
+    // Find the vendor
+    const vendor = await Vendor.findById(vendorId);
+
+    if (vendor) {
+        const pinCode = vendor.pinCode;
+        const vendorLat = vendor.lat;
+        const vendorLng = vendor.lng;
+
+        // Find the delivery person
+        const shippers = await Shipper.find({
+            verified: true,
+            isAvailable: true,
+            pinCode,
+        });
+
+        if (shippers.length > 0) {
+            // Find the nearest shipper
+            let minDistance;
+            let shipper = shippers[0];
+
+            shippers.map((shipper) => {
+                const shipperLat = shipper.lat;
+                const shipperLng = shipper.lng;
+
+                const distance = Math.sqrt(
+                    Math.pow(shipperLat - vendorLat, 2) +
+                        Math.pow(shipperLng - vendorLng, 2)
+                );
+
+                if (!minDistance || distance < minDistance) {
+                    minDistance = distance;
+                    shipper = shipper;
+                }
+            });
+
+            return shipper._id;
+        }
+    }
+
+    return null;
+};
+
 // ORDER
 export const createOrder = async (
     req: Request,
@@ -470,27 +594,37 @@ export const createOrder = async (
         });
     }
 
-    // Get order items from request body
-    const cart = <[OrderInputs]>req.body; // [{id: xx, quantity: xx}]
+    // Validate transaction
+    const { transactionId, finalAmount, items } = <OrderInputs>req.body;
+
+    const { status, currentTransaction } = await validateTransaction(
+        transactionId
+    );
+
+    if (!status) {
+        return res.status(400).json({
+            message: "Invalid transaction",
+        });
+    }
 
     let cartItem = [];
 
-    let total = 0;
+    let totalAmount = 0;
 
     let vendorId = "";
 
-    // Calculate total price
+    // Calculate totalAmount price
     const foods = await Food.find()
         .where("_id")
-        .in(cart.map((item) => item._id))
+        .in(items.map((item) => item._id))
         .exec();
 
     foods.map((food) => {
-        cart.map((item) => {
+        items.map((item) => {
             // Food id is ObjectId, item._id is string
             if (item._id === food._id.toString()) {
                 vendorId = food.vendorId;
-                total += food.price * item.quantity;
+                totalAmount += food.price * item.quantity;
                 cartItem.push({
                     food,
                     quantity: item.quantity,
@@ -500,28 +634,44 @@ export const createOrder = async (
     });
 
     // Create order
-    const orderId = Math.floor(Math.random() * 899999 + 100000); // From 100000 to 999999
+    const orderId = `${Math.floor(Math.random() * 899999 + 100000)}`; // From 100000 to 999999, string
 
-    const currentOrder = await Order.create({
+    const currentOrder = {
         orderId,
         vendorId,
         items: cartItem,
-        total,
+        totalAmount,
+        finalAmount,
         orderDate: new Date(),
-        paymentMethod: "COD",
-        paymentResponse: "",
         status: "Pending",
-    });
+        notes: "",
+        deliveryId: "",
+        readyTime: 45,
+    };
 
-    if (!currentOrder) {
+    // Assign order for delivery
+    const deliveryId = await findShipperNearVendor(vendorId.toString());
+
+    if (!deliveryId) {
         return res.status(500).json({
-            message: "Create order failed. Please try again later.",
+            message: "Assign order for shipper failed. Please try again later.",
         });
     }
 
+    currentOrder.deliveryId = deliveryId;
+    const order = await Order.create(currentOrder);
+
+    // Update transaction
+    currentTransaction.vendorId = vendorId;
+    currentTransaction.orderId = order._id;
+    currentTransaction.status = "Success";
+
+    await currentTransaction.save();
+
     // Add order to customer
     profile.cart = [] as any;
-    profile.orders.push(currentOrder);
+    profile.orders.push(order);
+
     await profile.save();
 
     return res.status(201).json(currentOrder);
@@ -585,23 +735,34 @@ export const getOrderById = async (
     return res.status(200).json(order);
 };
 
-export const getAvailablePromos = async (
+export const verifyPromo = async (
     req: Request,
     res: Response,
     next: NextFunction
 ) => {
-    const pinCode = req.params.pinCode;
+    const customer = req.user;
 
-    const promos = await Promo.find({
-        pinCode,
-        isActive: true,
-    });
-
-    if (!promos) {
-        return res.status(404).json({
-            message: "No promos found",
+    if (!customer) {
+        return res.status(401).json({
+            message: "Unauthorized",
         });
     }
 
-    return res.status(200).json(promos);
+    const promoId = req.params.id;
+
+    const promo = await Promo.findById(promoId);
+
+    if (!promo) {
+        return res.status(404).json({
+            message: "Promo not found",
+        });
+    }
+
+    if (!promo.isActive) {
+        return res.status(400).json({
+            message: "Promo is not active",
+        });
+    }
+
+    return res.status(200).json({ message: "Promo is valid.", promo });
 };

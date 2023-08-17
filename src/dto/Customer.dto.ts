@@ -1,4 +1,4 @@
-import { IsEmail, IsEmpty, Length } from "class-validator";
+import { IsEmail, Length } from "class-validator";
 
 export class CreateCustomerInputs {
     @IsEmail()
@@ -36,7 +36,19 @@ export interface CustomerPayload {
     verified: boolean;
 }
 
-export class OrderInputs {
+export class CartItem {
     _id: string;
     quantity: number;
+}
+
+export class OrderInputs {
+    transactionId: string;
+    finalAmount: number;
+    items: [CartItem];
+}
+
+export interface PaymentCustomerInputs {
+    totalAmount: number;
+    paymentMethod: string;
+    promoId: string;
 }
