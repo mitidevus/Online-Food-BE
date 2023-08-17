@@ -3,6 +3,7 @@ import { plainToClass } from "class-transformer";
 import {
     CreateCustomerInputs,
     LoginCustomerInputs,
+    OrderInputs,
     UpdateCustomerProfileInputs,
 } from "../dto/Customer.dto";
 import { validate } from "class-validator";
@@ -15,6 +16,8 @@ import {
     validatePassword,
 } from "../utils";
 import { Customer } from "../models/Customer";
+import { Food } from "../models/Food";
+import { Order } from "../models/Order";
 
 export const signupCustomer = async (
     req: Request,
@@ -61,6 +64,7 @@ export const signupCustomer = async (
         otp_expiry,
         lat: 0,
         lng: 0,
+        orders: [],
     });
 
     if (!newCustomer) {
@@ -321,4 +325,145 @@ export const updateCustomerProfile = async (
     const updatedCustomer = await profile.save();
 
     return res.status(200).json(updatedCustomer);
+};
+
+export const createOrder = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const customer = req.user;
+
+    if (!customer) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const profile = await Customer.findById(customer._id);
+
+    if (!profile) {
+        return res.status(404).json({
+            message: "Customer not found",
+        });
+    }
+
+    // Get order items from request body
+    const cart = <[OrderInputs]>req.body; // [{id: xx, quantity: xx}]
+
+    let cartItem = [];
+
+    let total = 0;
+
+    // Calculate total price
+    const foods = await Food.find()
+        .where("_id")
+        .in(cart.map((item) => item._id))
+        .exec();
+
+    foods.map((food) => {
+        cart.map((item) => {
+            // Food id is ObjectId, item._id is string
+            if (item._id === food._id.toString()) {
+                total += food.price * item.quantity;
+                cartItem.push({
+                    food,
+                    quantity: item.quantity,
+                });
+            }
+        });
+    });
+
+    // Create order
+    const orderId = Math.floor(Math.random() * 899999 + 100000); // From 100000 to 999999
+
+    console.log({
+        orderId,
+        items: cartItem,
+        total,
+        orderDate: new Date(),
+        paymentMethod: "COD",
+        paymentResponse: "",
+        status: "Pending",
+    });
+
+    const currentOrder = await Order.create({
+        orderId,
+        items: cartItem,
+        total,
+        orderDate: new Date(),
+        paymentMethod: "COD",
+        paymentResponse: "",
+        status: "Pending",
+    });
+
+    if (!currentOrder) {
+        return res.status(500).json({
+            message: "Create order failed. Please try again later.",
+        });
+    }
+
+    // Add order to customer
+    profile.orders.push(currentOrder);
+    await profile.save();
+
+    return res.status(201).json(currentOrder);
+};
+
+export const getOrders = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const customer = req.user;
+
+    if (!customer) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const profile = await Customer.findById(customer._id).populate("orders");
+
+    if (!profile) {
+        return res.status(404).json({
+            message: "Customer not found",
+        });
+    }
+
+    return res.status(200).json(profile.orders);
+};
+
+export const getOrderById = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const customer = req.user;
+
+    if (!customer) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const { id } = req.params;
+
+    const profile = await Customer.findById(customer._id).populate("orders");
+
+    if (!profile) {
+        return res.status(404).json({
+            message: "Customer not found",
+        });
+    }
+
+    const order = profile.orders.find((order) => order._id == id);
+
+    if (!order) {
+        return res.status(404).json({
+            message: "Order not found",
+        });
+    }
+
+    return res.status(200).json(order);
 };

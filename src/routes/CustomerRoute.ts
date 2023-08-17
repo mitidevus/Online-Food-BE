@@ -1,6 +1,9 @@
 import express from "express";
 import {
+    createOrder,
     getCustomerProfile,
+    getOrderById,
+    getOrders,
     loginCustomer,
     requestOTP,
     signupCustomer,
@@ -28,5 +31,10 @@ router.get("/otp", requestOTP);
 // Profile
 router.get("/profile", getCustomerProfile);
 router.patch("/profile", updateCustomerProfile);
+
+// Order
+router.post("/order", createOrder);
+router.get("/orders", getOrders);
+router.get("/order/:id", getOrderById);
 
 export { router as CustomerRoute };
