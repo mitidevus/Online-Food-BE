@@ -16,15 +16,16 @@ import {
     updateVendorService,
 } from "../controllers";
 import { authenticate } from "../middlewares/CommonAuth";
+import path from "path";
 
 const router = express.Router();
 
 const imageStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "images");
+    destination: function (req, file, cb) {
+        cb(null, path.join(__dirname, "../images"));
     },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + "-" + file.originalname);
+    filename: function (req, file, cb) {
+        cb(null, new Date().toISOString() + "_" + file.originalname);
     },
 });
 

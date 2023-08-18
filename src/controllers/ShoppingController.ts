@@ -10,20 +10,27 @@ export const getFoodAvailability = async (
 ) => {
     const pinCode = req.params.pinCode;
 
-    const result = await Vendor.find({
-        pinCode,
-        serviceAvailable: true,
-    })
+    const query = pinCode
+        ? { serviceAvailable: true, pinCode }
+        : { serviceAvailable: true };
+
+    const vendors = await Vendor.find(query)
         .sort({ rating: -1 })
         .populate("foods"); // populate is used to get the foods of the vendor
 
-    if (result.length === 0) {
+    if (vendors.length === 0) {
         return res.status(404).json({
             message: "No restaurants found",
         });
     }
 
-    return res.status(200).json(result);
+    let foodResult: any = [];
+
+    vendors.map((vendor) => {
+        foodResult.push(...vendor.foods);
+    });
+
+    return res.status(200).json(foodResult);
 };
 
 export const getTopRestaurants = async (

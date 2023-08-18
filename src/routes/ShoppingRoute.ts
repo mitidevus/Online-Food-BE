@@ -11,7 +11,7 @@ import {
 const router = express.Router();
 
 // Food Availability
-router.get("/:pinCode", getFoodAvailability);
+router.get("/:pinCode?", getFoodAvailability);
 
 // Top Restaurants
 router.get("/top-restaurants/:pinCode", getTopRestaurants);

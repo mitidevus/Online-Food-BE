@@ -10,6 +10,7 @@ import { Food } from "../models/Food";
 import { Order } from "../models/Order";
 import { Promo } from "../models/Promo";
 import { generateToken, validatePassword } from "../utils";
+import path from "path";
 
 export const loginVendor = async (
     req: Request,
@@ -128,9 +129,9 @@ export const updateVendorCoverImage = async (
         });
     }
 
-    const files = req.files as Express.Multer.File[];
+    const files = req.files as [Express.Multer.File];
 
-    const images = files.map((file) => file.filename);
+    const images = files.map((file: Express.Multer.File) => file.filename);
 
     vendor.coverImages.push(...images);
 
